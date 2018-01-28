@@ -18,10 +18,20 @@ function noop() {}
  * @return {Function}
  * @api public
  */
-function compose(funs) {
+function compose(middleware) {
+	if (!Array.isArray(middleware)) {
+		throw new TypeError('Middleware stack must be an array!');
+	}
+
+	for (const fn of middleware) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Middleware must be composed of functions!');
+		}
+	}
+
 	return (context, next) => {
-		var calls = funs.slice(0);
-		calls.push(next);
+		var funs = middleware.slice(0);
+		funs.push(next);
 		var index = -1;
 
 		return createNextCall(0)();
@@ -33,7 +43,7 @@ function compose(funs) {
 				}
 
 				index = i;
-				var fn = calls[i] || noop;
+				var fn = funs[i] || noop;
 				var nextCall = createNextCall(i + 1);
 
 				try {
