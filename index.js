@@ -9,19 +9,6 @@ module.exports = compose
 
 function noop() {}
 
-function once(fun) {
-    var called = false;
-    return ()=>{
-        if (called) {
-            throw new Error('called multiple times');
-        }
-        called = true;
-
-        return fun.apply(null, arguments);
-    }
-    ;
-}
-
 /**
  * Compose `middleware` returning
  * a fully valid middleware comprised
@@ -32,22 +19,29 @@ function once(fun) {
  * @api public
  */
 function compose(funs) {
-    var calls = funs.slice(0);
+	return (context, next) => {
+		var calls = funs.slice(0);
+		calls.push(next);
+		var index = -1;
 
-    return (context,next)=>{
-        calls.push(next);
-        return createNextCall(calls)();
+		return createNextCall(0)();
 
-    }
-}
+		function createNextCall(i) {
+			return () => {
+				if (i < index) {
+					return Promise.reject(new Error('next() called multiple times'));
+				}
 
-function createNextCall(nextCalls) {
-    var nextCall = ()=>{
-        var fn = nextCalls[0] || noop;
-        var nextCall = createNextCall(nextCalls.slice(1));
-        return Promise.resolve(fn(context, nextCall));
-    }
-    ;
+				index = i;
+				var fn = calls[i] || noop;
+				var nextCall = createNextCall(i + 1);
 
-    return once(nextCall);
+				try {
+					return Promise.resolve(fn(context, nextCall));
+				} catch (err) {
+					return Promise.reject(err);
+				}
+			}
+		}
+	}
 }
