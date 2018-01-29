@@ -34,22 +34,22 @@ function compose(middleware) {
 	}
 
 	return (context, next) => {
-		var funs = []; // middleware.slice(0);
-		funs[middleware.length] = next; // .push(next);
+		var funs = [];
+		funs[middleware.length] = next;
 
 		try {
-			return createNextCall(0)();
+			return callNext(0);
 		} catch (err) {
 			return Promise.reject(err);
 		}
 
-		function createNextCall(i) {
-			return () => {
-				var fn = funs[i] || middleware[i] || noop;
-				funs[i] = multipleCallError;
+		function callNext(i) {
+			var fn = funs[i] || middleware[i] || noop;
+			funs[i] = multipleCallError;
 
-				return Promise.resolve(fn(context,  createNextCall(i + 1)));
-			}
+			return Promise.resolve(fn(context, () => {
+				callNext(i + 1);
+			}));
 		}
 	}
 }
