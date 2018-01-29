@@ -9,6 +9,10 @@ module.exports = compose
 
 function noop() {}
 
+function multipleCallError() {
+	return Promise.reject(new Error('next() called multiple times'));
+}
+
 /**
  * Compose `middleware` returning
  * a fully valid middleware comprised
@@ -32,22 +36,18 @@ function compose(middleware) {
 	return (context, next) => {
 		var funs = middleware.slice(0);
 		funs.push(next);
-		var index = -1;
 
 		return createNextCall(0)();
 
 		function createNextCall(i) {
 			return () => {
-				if (i < index) {
-					return Promise.reject(new Error('next() called multiple times'));
-				}
-
-				index = i;
 				var fn = funs[i] || noop;
-				var nextCall = createNextCall(i + 1);
+				funs[i] = multipleCallError;
 
 				try {
-					return Promise.resolve(fn(context, nextCall));
+					return Promise.resolve(fn(context, () => {
+						return createNextCall(i + 1)();
+					}));
 				} catch (err) {
 					return Promise.reject(err);
 				}
