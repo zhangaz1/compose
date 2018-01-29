@@ -34,23 +34,21 @@ function compose(middleware) {
 	}
 
 	return (context, next) => {
-		var funs = middleware.slice(0);
-		funs.push(next);
+		var funs = []; // middleware.slice(0);
+		funs[middleware.length] = next; // .push(next);
 
-		return createNextCall(0)();
+		try {
+			return createNextCall(0)();
+		} catch (err) {
+			return Promise.reject(err);
+		}
 
 		function createNextCall(i) {
 			return () => {
-				var fn = funs[i] || noop;
+				var fn = funs[i] || middleware[i] || noop;
 				funs[i] = multipleCallError;
 
-				try {
-					return Promise.resolve(fn(context, () => {
-						return createNextCall(i + 1)();
-					}));
-				} catch (err) {
-					return Promise.reject(err);
-				}
+				return Promise.resolve(fn(context,  createNextCall(i + 1)));
 			}
 		}
 	}
