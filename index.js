@@ -13,6 +13,18 @@ function multipleCallError() {
 	return Promise.reject(new Error('next() called multiple times'));
 }
 
+function check(middleware){
+	if (!Array.isArray(middleware)) {
+		throw new TypeError('Middleware stack must be an array!');
+	}
+
+	for (const fn of middleware) {
+		if (typeof fn !== 'function') {
+			throw new TypeError('Middleware must be composed of functions!');
+		}
+	}
+}
+
 /**
  * Compose `middleware` returning
  * a fully valid middleware comprised
@@ -23,15 +35,7 @@ function multipleCallError() {
  * @api public
  */
 function compose(middleware) {
-	if (!Array.isArray(middleware)) {
-		throw new TypeError('Middleware stack must be an array!');
-	}
-
-	for (const fn of middleware) {
-		if (typeof fn !== 'function') {
-			throw new TypeError('Middleware must be composed of functions!');
-		}
-	}
+	check(middleware);
 
 	return (context, next) => {
 		var funs = [];
@@ -48,7 +52,7 @@ function compose(middleware) {
 			funs[i] = multipleCallError;
 
 			return Promise.resolve(fn(context, () => {
-				callNext(i + 1);
+				return callNext(i + 1);
 			}));
 		}
 	}
